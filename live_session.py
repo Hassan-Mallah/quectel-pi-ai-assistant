@@ -1,9 +1,63 @@
 import asyncio
+import sqlite3
 
 from audio import drain_queue, mic_sender, speaker_player
 from config import LIVE_CONFIG, MODEL, load_client
+from personal_data import TodoNotesStore
 from reminders import ReminderStore, parse_due_time
 from google.genai import types
+
+
+def handle_tool_call(function_call, reminder_store, personal_store):
+    name = function_call.name
+    args = function_call.args or {}
+    try:
+        if name == "create_reminder":
+            title = str(args.get("title", "")).strip()
+            due_time = str(args.get("due_time", "")).strip()
+            reminder_id = reminder_store.create(title, parse_due_time(due_time))
+            result = {"result": "Reminder created", "reminder_id": reminder_id}
+            print(f'[reminder]: created #{reminder_id} "{title}" for {due_time}')
+        elif name == "add_todo":
+            todo_id = personal_store.add_todo(str(args.get("title", "")))
+            result = {"result": "To-do added", "todo_id": todo_id}
+            print(f"[todo]: added #{todo_id}")
+        elif name == "list_todos":
+            todos = personal_store.list_todos(args.get("status", "pending"))
+            result = {"result": "To-do list", "items": todos}
+        elif name == "complete_todo":
+            todo_id = args.get("todo_id")
+            if not isinstance(todo_id, int) or isinstance(todo_id, bool):
+                raise ValueError("To-do ID must be an integer")
+            if not personal_store.complete_todo(todo_id):
+                raise ValueError(f"No pending to-do found with ID {todo_id}")
+            result = {"result": "To-do marked complete", "todo_id": todo_id}
+            print(f"[todo]: completed #{todo_id}")
+        elif name == "add_note":
+            note_id = personal_store.add_note(
+                str(args.get("title", "")),
+                str(args.get("content", "")),
+            )
+            result = {"result": "Note saved", "note_id": note_id}
+            print(f"[note]: saved #{note_id}")
+        elif name == "list_notes":
+            limit = args.get("limit", 10)
+            notes = personal_store.list_notes(limit)
+            result = {"result": "Recent notes", "items": notes}
+        elif name == "search_notes":
+            notes = personal_store.search_notes(str(args.get("query", "")))
+            result = {"result": "Matching notes", "items": notes}
+        else:
+            result = {"error": f"Unsupported tool: {name}"}
+    except (TypeError, ValueError, sqlite3.Error) as exc:
+        result = {"error": str(exc)}
+        print(f"[tool error] {name}: {exc}")
+
+    return types.FunctionResponse(
+        id=function_call.id,
+        name=name,
+        response=result,
+    )
 
 
 async def play_initial_greeting(
@@ -45,12 +99,15 @@ async def play_initial_greeting(
         print("[init]: Timed out waiting for greeting; starting mic loop anyway.")
 
 
-async def audio_receiver(session, play_queue: asyncio.Queue, stop_event: asyncio.Event):
+async def audio_receiver(
+    session,
+    play_queue: asyncio.Queue,
+    stop_event: asyncio.Event,
+    reminder_store: ReminderStore,
+    personal_store: TodoNotesStore,
+):
     """Receive audio chunks and transcripts from Gemini Live."""
     last_msg = asyncio.get_running_loop().time()
-    if not hasattr(audio_receiver, "reminder_store"):
-        audio_receiver.reminder_store = ReminderStore()
-    reminder_store = audio_receiver.reminder_store
 
     try:
         while not stop_event.is_set():
@@ -67,45 +124,14 @@ async def audio_receiver(session, play_queue: asyncio.Queue, stop_event: asyncio
                         return
 
                     if getattr(response, "tool_call", None):
-                        function_responses = []
-                        for function_call in response.tool_call.function_calls:
-                            if function_call.name != "create_reminder":
-                                function_responses.append(
-                                    types.FunctionResponse(
-                                        id=function_call.id,
-                                        name=function_call.name,
-                                        response={"result": "Unsupported reminder action"},
-                                    )
-                                )
-                                continue
-
-                            args = function_call.args or {}
-                            title = str(args.get("title", "")).strip()
-                            due_time = str(args.get("due_time", "")).strip()
-                            try:
-                                reminder_id = reminder_store.create(
-                                    title,
-                                    parse_due_time(due_time),
-                                )
-                                result = {
-                                    "result": "Reminder created",
-                                    "reminder_id": reminder_id,
-                                }
-                                print(
-                                    f"[reminder]: created #{reminder_id} "
-                                    f'"{title}" for {due_time}'
-                                )
-                            except (TypeError, ValueError) as exc:
-                                result = {"result": f"Could not create reminder: {exc}"}
-                                print(f"[reminder]: {exc}")
-
-                            function_responses.append(
-                                types.FunctionResponse(
-                                    id=function_call.id,
-                                    name=function_call.name,
-                                    response=result,
-                                )
+                        function_responses = [
+                            handle_tool_call(
+                                function_call,
+                                reminder_store,
+                                personal_store,
                             )
+                            for function_call in response.tool_call.function_calls
+                        ]
 
                         await session.send_tool_response(
                             function_responses=function_responses
@@ -177,7 +203,7 @@ async def run_session(stop_event: asyncio.Event):
     play_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=100)
     player_task = asyncio.create_task(speaker_player(play_queue, stop_event))
     reminder_store = ReminderStore()
-    audio_receiver.reminder_store = reminder_store
+    personal_store = TodoNotesStore(reminder_store.db_path)
     loop_tasks: list[asyncio.Task] = []
 
     try:
@@ -189,7 +215,15 @@ async def run_session(stop_event: asyncio.Event):
 
             loop_tasks = [
                 asyncio.create_task(mic_sender(session, stop_event)),
-                asyncio.create_task(audio_receiver(session, play_queue, stop_event)),
+                asyncio.create_task(
+                    audio_receiver(
+                        session,
+                        play_queue,
+                        stop_event,
+                        reminder_store,
+                        personal_store,
+                    )
+                ),
                 asyncio.create_task(
                     reminder_scheduler(session, stop_event, reminder_store)
                 ),
