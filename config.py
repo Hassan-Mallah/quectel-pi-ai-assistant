@@ -8,7 +8,7 @@ from google.genai import types
 def load_client():
     if "GEMINI_API_KEY" not in os.environ:
         raise ValueError("GEMINI_API_KEY environment variable is not set!")
-    return genai.Client(http_options={"api_version": "v1beta"})
+    return genai.Client(http_options={"api_version": "v1alpha"})
 
 
 MODEL = "gemini-3.8-live"
