@@ -33,3 +33,11 @@ Use natural requests such as:
 
 To-dos and notes are stored locally in the same SQLite database. The assistant
 can list and complete to-dos, and list or search saved notes.
+
+## Current information
+
+The assistant can use Gemini's Google Search grounding for current information,
+such as weather, news, schedules, and prices. Ask a question aloud and include
+a location when relevant, for example, "What's the weather in Paris?" This
+requires an internet connection and the configured Gemini API key; no separate
+search API key is needed.

@@ -8,7 +8,7 @@ from google.genai import types
 def load_client():
     if "GEMINI_API_KEY" not in os.environ:
         raise ValueError("GEMINI_API_KEY environment variable is not set!")
-    return genai.Client(http_options={"api_version": "v1alpha"})
+    return genai.Client(http_options={"api_version": "v1beta"})
 
 
 MODEL = "gemini-3.8-live"
@@ -36,8 +36,11 @@ LIVE_CONFIG = types.LiveConnectConfig(
                     "You are a voice assistant for a Quectel Pi. "
                     "Answer general-knowledge questions directly using your "
                     "built-in knowledge; do not claim you lack general information. "
-                    "You do not have web browsing or live information, so be clear "
-                    "when a question requires current facts you cannot verify. "
+                    "Use Google Search for current or time-sensitive information, "
+                    "such as weather, news, schedules, and prices. Base answers on "
+                    "the search results, briefly mention sources aloud, and be clear "
+                    "if current information cannot be found. Ask for a location "
+                    "when one is needed and the user has not provided it. "
                     "Use tools for reminders, to-dos, and notes, and only confirm "
                     "an action after its tool succeeds. For reminders, call "
                     "create_reminder with a title and ISO 8601 due_time. "
@@ -55,6 +58,7 @@ LIVE_CONFIG = types.LiveConnectConfig(
         ],
     ),
     tools=[
+        {"google_search": {}},
         types.Tool(
             function_declarations=[
                 function_declaration(
