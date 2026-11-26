@@ -36,9 +36,10 @@ can list and complete to-dos, and list or search saved notes.
 
 ## Current information
 
-The assistant can query DuckDuckGo's Instant Answer API for current information.
-Ask a question aloud and include a location when relevant, for example, "What's
-the weather in Paris?" This uses Python's standard library and needs no separate
-API key, but it is not full web search and may return no results for news,
-weather, traffic, or other topics. The app will report when no results are
-available.
+The assistant has dedicated current-weather and recent-news tools. Ask, for
+example, "What's the weather in Paris?" or "What's the latest news about AI?"
+Weather is provided by Open-Meteo and headlines by BBC News RSS feeds; both use
+Python's standard library and do not require separate API keys. The general
+DuckDuckGo Instant Answer tool remains available for other queries but is not
+full web search and may return no results. Traffic data is not currently
+supported.

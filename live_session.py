@@ -4,6 +4,7 @@ import sqlite3
 from audio import drain_queue, mic_sender, speaker_player
 from config import LIVE_CONFIG, MODEL, load_client
 from duckduckgo_search import search_duckduckgo
+from live_data import get_current_weather, get_latest_news
 from personal_data import TodoNotesStore
 from reminders import ReminderStore, parse_due_time
 from google.genai import types
@@ -24,6 +25,25 @@ async def handle_tool_call(function_call, reminder_store, personal_store):
             print(
                 f"[web_search]: {len(result['results'])} instant-answer result(s) "
                 f'for "{result["query"]}"'
+            )
+        elif name == "get_weather":
+            result = await asyncio.to_thread(
+                get_current_weather,
+                args.get("location"),
+            )
+            print(
+                f"[weather]: {result['conditions']} in {result['location']} "
+                f"at {result['temperature']} {result['temperature_unit']}"
+            )
+        elif name == "get_news":
+            result = await asyncio.to_thread(
+                get_latest_news,
+                args.get("topic", ""),
+                args.get("max_results", 5),
+            )
+            print(
+                f"[news]: {len(result['articles'])} article(s) for "
+                f'"{result["query"]}"'
             )
         elif name == "create_reminder":
             title = str(args.get("title", "")).strip()

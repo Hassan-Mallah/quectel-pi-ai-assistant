@@ -36,12 +36,11 @@ LIVE_CONFIG = types.LiveConnectConfig(
                     "You are a voice assistant for a Quectel Pi. "
                     "Answer general-knowledge questions directly using your "
                     "built-in knowledge; do not claim you lack general information. "
-                    "Use web_search to look up current or time-sensitive information, "
-                    "such as weather, news, schedules, and prices. Base answers on "
-                    "the search results, briefly mention sources aloud, and be clear "
-                    "if no useful results are returned; this search may not cover "
-                    "every topic. Ask for a location when one is needed and the user "
-                    "has not provided it. "
+                    "Use get_weather for current weather and ask for a city if the "
+                    "user has not provided one. Use get_news for recent headlines, "
+                    "including a topic when the user asks about one. Use web_search "
+                    "for other current information. Briefly mention data sources aloud "
+                    "and be clear when a tool returns no results. "
                     "Use tools for reminders, to-dos, and notes, and only confirm "
                     "an action after its tool succeeds. For reminders, call "
                     "create_reminder with a title and ISO 8601 due_time. "
@@ -75,6 +74,31 @@ LIVE_CONFIG = types.LiveConnectConfig(
                         ),
                     },
                     ["query"],
+                ),
+                function_declaration(
+                    "get_weather",
+                    "Get current weather conditions for a city or location.",
+                    {
+                        "location": types.Schema(
+                            type="STRING",
+                            description="City or location name, optionally with a country.",
+                        )
+                    },
+                    ["location"],
+                ),
+                function_declaration(
+                    "get_news",
+                    "Get recent news headlines, optionally filtered by topic.",
+                    {
+                        "topic": types.Schema(
+                            type="STRING",
+                            description="News topic, or omit for broad recent headlines.",
+                        ),
+                        "max_results": types.Schema(
+                            type="INTEGER",
+                            description="Maximum number of headlines, from 1 to 10.",
+                        ),
+                    },
                 ),
                 function_declaration(
                     "create_reminder",
