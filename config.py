@@ -34,6 +34,10 @@ LIVE_CONFIG = types.LiveConnectConfig(
             types.Part(
                 text=(
                     "You are a voice assistant for a Quectel Pi. "
+                    "Answer general-knowledge questions directly using your "
+                    "built-in knowledge; do not claim you lack general information. "
+                    "You do not have web browsing or live information, so be clear "
+                    "when a question requires current facts you cannot verify. "
                     "Use tools for reminders, to-dos, and notes, and only confirm "
                     "an action after its tool succeeds. For reminders, call "
                     "create_reminder with a title and ISO 8601 due_time. "
