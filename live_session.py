@@ -3,16 +3,29 @@ import sqlite3
 
 from audio import drain_queue, mic_sender, speaker_player
 from config import LIVE_CONFIG, MODEL, load_client
+from duckduckgo_search import search_duckduckgo
 from personal_data import TodoNotesStore
 from reminders import ReminderStore, parse_due_time
 from google.genai import types
 
 
-def handle_tool_call(function_call, reminder_store, personal_store):
+async def handle_tool_call(function_call, reminder_store, personal_store):
     name = function_call.name
     args = function_call.args or {}
     try:
-        if name == "create_reminder":
+        if name == "web_search":
+            query = args.get("query")
+            max_results = args.get("max_results", 5)
+            result = await asyncio.to_thread(
+                search_duckduckgo,
+                query,
+                max_results,
+            )
+            print(
+                f"[web_search]: {len(result['results'])} instant-answer result(s) "
+                f'for "{result["query"]}"'
+            )
+        elif name == "create_reminder":
             title = str(args.get("title", "")).strip()
             due_time = str(args.get("due_time", "")).strip()
             reminder_id = reminder_store.create(title, parse_due_time(due_time))
@@ -49,7 +62,7 @@ def handle_tool_call(function_call, reminder_store, personal_store):
             result = {"result": "Matching notes", "items": notes}
         else:
             result = {"error": f"Unsupported tool: {name}"}
-    except (TypeError, ValueError, sqlite3.Error) as exc:
+    except (OSError, TypeError, ValueError, sqlite3.Error) as exc:
         result = {"error": str(exc)}
         print(f"[tool error] {name}: {exc}")
 
@@ -125,7 +138,7 @@ async def audio_receiver(
 
                     if getattr(response, "tool_call", None):
                         function_responses = [
-                            handle_tool_call(
+                            await handle_tool_call(
                                 function_call,
                                 reminder_store,
                                 personal_store,

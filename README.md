@@ -36,8 +36,9 @@ can list and complete to-dos, and list or search saved notes.
 
 ## Current information
 
-The assistant can use Gemini's Google Search grounding for current information,
-such as weather, news, schedules, and prices. Ask a question aloud and include
-a location when relevant, for example, "What's the weather in Paris?" This
-requires an internet connection and the configured Gemini API key; no separate
-search API key is needed.
+The assistant can query DuckDuckGo's Instant Answer API for current information.
+Ask a question aloud and include a location when relevant, for example, "What's
+the weather in Paris?" This uses Python's standard library and needs no separate
+API key, but it is not full web search and may return no results for news,
+weather, traffic, or other topics. The app will report when no results are
+available.
