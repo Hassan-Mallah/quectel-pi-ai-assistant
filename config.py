@@ -36,7 +36,7 @@ LIVE_CONFIG = types.LiveConnectConfig(
                     "You are a voice assistant for a Quectel Pi. "
                     "Answer general-knowledge questions directly using your "
                     "built-in knowledge; do not claim you lack general information. "
-                    "Use Google Search for current or time-sensitive information, "
+                    "Use web_search for current or time-sensitive information, "
                     "such as weather, news, schedules, and prices. Base answers on "
                     "the search results, briefly mention sources aloud, and be clear "
                     "if current information cannot be found. Ask for a location "
@@ -58,9 +58,23 @@ LIVE_CONFIG = types.LiveConnectConfig(
         ],
     ),
     tools=[
-        # {"google_search": {}},
         types.Tool(
             function_declarations=[
+                function_declaration(
+                    "web_search",
+                    "Search the web for current or time-sensitive information such as weather, news, schedules, and prices.",
+                    {
+                        "query": types.Schema(
+                            type="STRING",
+                            description="Concise search query.",
+                        ),
+                        "max_results": types.Schema(
+                            type="INTEGER",
+                            description="Maximum number of results to return, from 1 to 10.",
+                        ),
+                    },
+                    ["query"],
+                ),
                 function_declaration(
                     "create_reminder",
                     "Create a reminder for a future local date and time.",
