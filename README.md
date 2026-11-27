@@ -43,3 +43,11 @@ Python's standard library and do not require separate API keys. The general
 DuckDuckGo Instant Answer tool remains available for other queries but is not
 full web search and may return no results. Traffic data is not currently
 supported.
+
+## Tests
+
+Run the test suite from the project root:
+
+```bash
+python -m unittest discover -v
+```
